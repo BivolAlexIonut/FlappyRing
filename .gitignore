@@ -1,0 +1,22 @@
+# Foldere de build și dependențe
+/cmake-build-*
+/_deps/
+/CMakeFiles/
+/.cmake/
+/.cache/
+
+# Executabilul
+FlappyRing
+*.exe
+
+# Fișiere de build și cache
+CMakeCache.txt
+*.cmake
+cmake_install.cmake
+compile_commands.json
+*.log
+*.ninja*
+*.o
+*.a
+*.so
+*.user
