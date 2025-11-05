@@ -1,0 +1,74 @@
+name: Build Windows Release
+
+on:
+  # Se declanșează DOAR când dai push la un tag care începe cu 'v'
+  push:
+    tags:
+      - 'v*.*.*'
+  # Permite și pornirea manuală din tab-ul "Actions" de pe GitHub
+  workflow_dispatch:
+
+env:
+  # --- Modifică aici dacă e nevoie ---
+  EXECUTABLE_NAME: "FlappyRing"
+  BUILD_DIR: "build"
+
+jobs:
+  build-windows:
+    name: Build Windows (Release)
+    runs-on: windows-latest # Folosește cea mai nouă mașină de Windows
+
+    steps:
+      # 1. Descarcă codul tău de pe GitHub
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        # Avem nevoie de 'submodules: true' pentru a descărca SFML
+        with:
+          submodules: true 
+
+      # 2. Setează mediul de compilare (Visual Studio)
+      - name: Setup MSVC
+        uses: microsoft/setup-msvc@v1.1
+
+      # 3. Configurează CMake
+      # (Presupune că CMakeLists.txt folosește FetchContent sau add_subdirectory pentru SFML)
+      - name: Configure CMake
+        run: |
+          cmake -B ${{ env.BUILD_DIR }} -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
+      
+      # 4. Compilează jocul (creează FlappyRing.exe)
+      - name: Build
+        run: |
+          cmake --build ${{ env.BUILD_DIR }} --config Release
+
+      # 5. Pregătește pachetul pentru distribuție
+      - name: Create Release Package
+        run: |
+          # 5.1. Creează un folder nou pentru pachet
+          mkdir FlappyRing-Windows
+          
+          # 5.2. Copiază executabilul
+          copy ${{ env.BUILD_DIR }}/Release/${{ env.EXECUTABLE_NAME }}.exe FlappyRing-Windows/
+          
+          # 5.3. Copiază resursele
+          xcopy /E /I assets FlappyRing-Windows/assets/
+          
+          # 5.4. Copiază DLL-urile SFML (din folderul de build, unde le-a pus CMake)
+          copy ${{ env.BUILD_DIR }}/_deps/sfml-build/lib/Release/*.dll FlappyRing-Windows/
+          
+          # 5.5. Copiază OpenAL (necesar pentru SFML Audio)
+          copy ${{ env.BUILD_DIR }}/_deps/sfml-src/extlibs/bin/x64/openal32.dll FlappyRing-Windows/
+
+      # 6. Arhivează pachetul într-un .zip
+      - name: Archive Release
+        run: |
+          7z a -tzip FlappyRing-Windows.zip ./FlappyRing-Windows/
+      
+      # 7. Creează Release-ul pe GitHub și încarcă arhiva .zip
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Numele release-ului va fi numele tag-ului (ex: "v1.0")
+          name: Release ${{ github.ref_name }}
+          # Atașează arhiva .zip
+          files: FlappyRing-Windows.zip
